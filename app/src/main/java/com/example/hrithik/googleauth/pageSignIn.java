@@ -2,8 +2,9 @@ package com.example.hrithik.googleauth;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
-import android.support.annotation.NonNull;
-import android.support.v7.app.AppCompatActivity;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -15,6 +16,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.tasks.OnCanceledListener;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthCredential;
@@ -22,6 +24,14 @@ import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class pageSignIn extends AppCompatActivity {
     SignInButton googleBtn;
@@ -29,13 +39,16 @@ public class pageSignIn extends AppCompatActivity {
     private String TAG="pageSignIn";
     private int RC_SIGN_IN=1;
     private GoogleSignInClient mGoogleSignInClient;
-
     ProgressDialog progressDialog;
+    private FirebaseDatabase db;
+    public DatabaseReference myref;
+    String uid="uid";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_google_sign_in);
+
         mAuth=FirebaseAuth.getInstance();
         googleBtn=findViewById(R.id.googleBtn);
 
@@ -45,6 +58,7 @@ public class pageSignIn extends AppCompatActivity {
         if (mAuth.getCurrentUser() != null) {
           Intent  myIntent = new Intent(getApplicationContext(), profileActivity.class);
             startActivity(myIntent);
+            finish();
         }
 
         // Configure Google Sign In
@@ -89,7 +103,6 @@ public class pageSignIn extends AppCompatActivity {
     }
 
 
-
     private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
         Log.d(TAG, "firebaseAuthWithGoogle:" + acct.getId());
         progressDialog=new ProgressDialog(this);
@@ -104,7 +117,16 @@ public class pageSignIn extends AppCompatActivity {
                         if (task.isSuccessful()) {
                             // Sign in success, update UI with the signed-in user's information
                             Log.d(TAG, "signInWithCredential:success");
+
                             FirebaseUser user = mAuth.getCurrentUser();
+                            //uid=user.getUid();
+                            //adding firebase realtime database with primary key UID
+                             db = FirebaseDatabase.getInstance();
+                            myref= db.getReference("Users").child(user.getUid()).child("UserInfo");
+                            Map myMap=new HashMap();
+                            myMap.put("Email",user.getEmail());
+                            myMap.put("Name",user.getDisplayName());
+                            myref.updateChildren(myMap);
                             if (progressDialog.isShowing())
                                 progressDialog.dismiss();
                             Intent myIntent= new Intent(pageSignIn.this,profileActivity.class);
@@ -119,8 +141,7 @@ public class pageSignIn extends AppCompatActivity {
                             Toast.makeText(getApplicationContext(),task.getException().getMessage(),Toast.LENGTH_SHORT).show();
                         }
 
-                        // ...
-                    }
+                        }
                 });
     }
 }
